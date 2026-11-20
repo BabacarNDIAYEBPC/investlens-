@@ -1,0 +1,92 @@
+# Produces a downloadable, App Store-signed IPA. Does not submit or publish it.
+# See docs/CODEMAGIC.md for the signing identities and environment group.
+workflows:
+  investlens-ios-ipa:
+    name: InvestLens - signed iOS IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      node: 22
+      xcode: latest
+      cocoapods: default
+      groups:
+        - investlens_mobile
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.investlens.mobile
+      vars:
+        MOBILE_DIR: artifacts/investlens-mobile
+        CI: "1"
+    scripts:
+      - name: Check production configuration
+        script: |
+          set -euo pipefail
+          : "${EXPO_PUBLIC_DOMAIN:?Set the production API hostname in investlens_mobile}"
+          : "${EXPO_PUBLIC_REVENUECAT_IOS_API_KEY:?Set the public RevenueCat iOS SDK key in investlens_mobile}"
+          node -e 'const d=process.env.EXPO_PUBLIC_DOMAIN; if (!d || /[:/ \t]/.test(d) || /localhost|\.replit\.dev$/.test(d)) throw new Error("EXPO_PUBLIC_DOMAIN must be a production hostname, without https:// or a path");'
+      - name: Install workspace dependencies
+        script: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@10.26.1 --activate
+          pnpm install --frozen-lockfile
+      - name: Generate native iOS project
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$MOBILE_DIR"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          if (app.expo.ios.bundleIdentifier !== 'app.investlens.mobile') {
+            throw new Error('Unexpected bundle identifier; refusing to build another Apple app');
+          }
+          // Existing Apple builds used small numbers. Start this pipeline at 101.
+          // Set IOS_BUILD_NUMBER explicitly if Apple already has a higher number.
+          const number = process.env.IOS_BUILD_NUMBER || String(100 + Number(process.env.BUILD_NUMBER));
+          if (!/^[1-9]\d*$/.test(number) || !Number.isSafeInteger(Number(number))) {
+            throw new Error('Missing or invalid build number');
+          }
+          app.expo.ios.buildNumber = number;
+          fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
+          NODE
+          pnpm exec expo prebuild --platform ios --no-install
+      - name: Install native dependencies
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$MOBILE_DIR/ios"
+          pod install
+      - name: Apply App Store signing identities
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$MOBILE_DIR"
+          xcode-project use-profiles
+      - name: Archive and export IPA
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$MOBILE_DIR"
+          shopt -s nullglob
+          workspaces=(ios/*.xcworkspace)
+          schemes=(ios/*.xcodeproj/xcshareddata/xcschemes/*.xcscheme)
+          if [ "${#workspaces[@]}" -ne 1 ] || [ "${#schemes[@]}" -ne 1 ]; then
+            echo "Expected exactly one app workspace and one shared scheme" >&2
+            exit 1
+          fi
+          scheme="$(basename "${schemes[0]}" .xcscheme)"
+          xcode-project build-ipa \
+            --workspace "${workspaces[0]}" \
+            --scheme "$scheme" \
+            --export-options-plist="$HOME/export_options.plist" \
+            --ipa-directory="$CM_BUILD_DIR/generated-artifacts/ios"
+      - name: Verify the exported IPA
+        script: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=("$CM_BUILD_DIR"/generated-artifacts/ios/*.ipa)
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "Expected exactly one signed IPA" >&2
+            exit 1
+          fi
+          unzip -t "${files[0]}"
+    artifacts:
+      - generated-artifacts/ios/*.ipa
+      - /tmp/xcodebuild_logs/*.log
