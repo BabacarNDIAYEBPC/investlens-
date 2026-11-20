@@ -13,7 +13,7 @@ workflows:
         - investlens_mobile
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: app.investlens.mobile
+        bundle_identifier: app.replit.investlensmobile
       vars:
         MOBILE_DIR: artifacts/investlens-mobile
         CI: "1"
@@ -37,7 +37,7 @@ workflows:
           node <<'NODE'
           const fs = require('node:fs');
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          if (app.expo.ios.bundleIdentifier !== 'app.investlens.mobile') {
+          if (app.expo.ios.bundleIdentifier !== 'app.replit.investlensmobile') {
             throw new Error('Unexpected bundle identifier; refusing to build another Apple app');
           }
           // Existing Apple builds used small numbers. Start this pipeline at 101.

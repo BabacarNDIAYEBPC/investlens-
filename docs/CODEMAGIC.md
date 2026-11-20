@@ -2,7 +2,7 @@
 
 Ce workflow construit une IPA signée pour **App Store Connect / TestFlight**.
 Il ne soumet pas l'application à Apple et ne la publie pas automatiquement.
-Il conserve l'identifiant existant : `app.investlens.mobile`.
+Il conserve la fiche Apple existante et son identifiant : `app.replit.investlensmobile`.
 
 ## Prérequis du compte Codemagic
 
@@ -13,7 +13,7 @@ Il conserve l'identifiant existant : `app.investlens.mobile`.
    Ne jamais déposer de fichier `.p8`, `.p12`, de clé privée ou de mot de passe
    dans GitHub.
 3. Dans **Code signing identities**, ajouter un certificat **Apple Distribution**
-   avec sa clé privée et un profil **App Store** pour `app.investlens.mobile`.
+    avec sa clé privée et un profil **App Store** pour `app.replit.investlensmobile`.
    Un certificat généré ailleurs ne peut pas être récupéré avec sa clé privée
    depuis Apple. Il faut l'importer avec sa clé ou en générer un nouveau dans
    Codemagic, sans révoquer les certificats existants.

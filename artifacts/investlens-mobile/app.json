@@ -14,7 +14,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.investlens.mobile"
+      "bundleIdentifier": "app.replit.investlensmobile"
     },
     "android": {
       "adaptiveIcon": {
