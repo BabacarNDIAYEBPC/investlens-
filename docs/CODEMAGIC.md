@@ -49,3 +49,41 @@ le Mac Codemagic ; aucun Mac ou iPhone local n'est nécessaire pour produire l'I
 
 Une IPA App Store n'est pas installable directement sur un iPhone : les tests
 sur appareil passent par TestFlight après son transfert dans App Store Connect.
+
+## Android : AAB signé, sans publication automatique
+
+Un second workflow, **InvestLens - signed Android AAB**
+(`investlens-android-aab`), produit `investlens-android.aab` dans **Artifacts**.
+Il conserve l'icône du projet et utilise le package Android
+`app.replit.investlensmobile`. Ce nom doit correspondre à la fiche Google Play.
+Il ne modifie pas la configuration iOS et n'envoie rien à Google Play.
+
+Avec l'accord de l'utilisateur, la signature réutilise la clé existante
+**marketlens_google_play_upload** dans Codemagic. Ce choix ne modifie ni ne
+remplace la signature des applications existantes. Aucun fichier de clé ni
+mot de passe ne doit être copié dans ce dépôt ou dans la conversation.
+
+Le groupe **investlens_mobile** existant doit contenir `EXPO_PUBLIC_DOMAIN`,
+le nom d'hôte de production sans protocole ni chemin. Codemagic fournit les
+variables de signature `CM_KEYSTORE_*`, `CM_KEY_ALIAS` et `CM_KEY_PASSWORD`.
+La numérotation Android est indépendante d'Apple : `100 + BUILD_NUMBER`, ou
+`ANDROID_VERSION_CODE` si fourni explicitement. Ce numéro doit augmenter à
+chaque nouvelle version Android.
+
+Dans l'application InvestLens de Codemagic :
+
+1. Recharger la configuration de la branche **main**.
+2. Sélectionner **Start new build**, puis **InvestLens - signed Android AAB**.
+3. Lancer le build : il consomme des minutes du compte Codemagic.
+4. Attendre **Finished**, puis télécharger **investlens-android.aab** dans
+   **Artifacts**. Un AAB n'est pas un APK installable directement.
+
+Le workflow construit sur les machines Codemagic ; aucun projet natif n'est
+généré dans l'environnement de prévisualisation Replit. Il vérifie l'archive
+et sa signature JAR avant de rendre l'AAB disponible.
+
+**Limite fonctionnelle actuelle :** les achats Pro du code mobile sont
+configurés pour iOS, pas pour Google Play. Ce workflow n'ajoute pas les
+abonnements Android. L'AAB ne doit donc pas être présenté comme une version
+Android commerciale complète ; les paiements Android restent à configurer
+et à vérifier avant une publication publique.

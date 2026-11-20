@@ -1,4 +1,4 @@
-# Produces a downloadable, App Store-signed IPA. Does not submit or publish it.
+# Produces downloadable signed iOS IPA and Android AAB files. No store submission.
 # See docs/CODEMAGIC.md for the signing identities and environment group.
 workflows:
   investlens-ios-ipa:
@@ -90,3 +90,73 @@ workflows:
     artifacts:
       - generated-artifacts/ios/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
+  investlens-android-aab:
+    name: InvestLens - signed Android AAB
+    instance_type: linux_x2
+    max_build_duration: 90
+    environment:
+      node: 22
+      java: 17
+      groups:
+        - investlens_mobile
+      android_signing:
+        - marketlens_google_play_upload
+      vars:
+        MOBILE_DIR: artifacts/investlens-mobile
+        CI: "1"
+    scripts:
+      - name: Check Android production configuration
+        script: |
+          set -euo pipefail
+          : "${EXPO_PUBLIC_DOMAIN:?Set the production API hostname in investlens_mobile}"
+          : "${CM_KEYSTORE_PATH:?Codemagic must supply the selected Android keystore}"
+          : "${CM_KEYSTORE_PASSWORD:?Missing keystore password in Codemagic signing identity}"
+          : "${CM_KEY_ALIAS:?Missing key alias in Codemagic signing identity}"
+          : "${CM_KEY_PASSWORD:?Missing key password in Codemagic signing identity}"
+          test -f "$CM_KEYSTORE_PATH"
+          node -e 'const d=process.env.EXPO_PUBLIC_DOMAIN; if (!d || /[:/ \t]/.test(d) || /localhost|\.replit\.dev$/.test(d)) throw new Error("EXPO_PUBLIC_DOMAIN must be a production hostname, without https:// or a path");'
+          echo "NOTICE: Android Pro purchases are not configured in this source. This build does not enable Google Play subscriptions."
+      - name: Install workspace dependencies
+        script: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@10.26.1 --activate
+          pnpm install --frozen-lockfile
+      - name: Prepare Android version
+        script: |
+          set -euo pipefail
+          node scripts/codemagic-android.cjs version
+      - name: Generate native Android project on Codemagic
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$MOBILE_DIR"
+          pnpm exec expo prebuild --platform android --no-install
+      - name: Apply existing upload signing identity
+        script: |
+          set -euo pipefail
+          node scripts/codemagic-android.cjs signing
+      - name: Build signed Android App Bundle
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$MOBILE_DIR/android"
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$sdk" && test -d "$sdk"
+          printf 'sdk.dir=%s\n' "$sdk" > local.properties
+          chmod +x gradlew
+          ./gradlew :app:bundleRelease --no-daemon --stacktrace
+      - name: Verify and collect the AAB
+        script: |
+          set -euo pipefail
+          aab="$CM_BUILD_DIR/$MOBILE_DIR/android/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$aab"
+          unzip -t "$aab"
+          # App bundles use JAR signing, not APK signing.
+          verification="$(jarsigner -J-Duser.language=en -J-Duser.country=US -verify "$aab")"
+          printf '%s\n' "$verification"
+          grep -q 'jar verified' <<< "$verification"
+          mkdir -p "$CM_BUILD_DIR/generated-artifacts/android"
+          cp "$aab" "$CM_BUILD_DIR/generated-artifacts/android/investlens-android.aab"
+    artifacts:
+      - generated-artifacts/android/*.aab
+      - artifacts/investlens-mobile/android/app/build/outputs/mapping/release/mapping.txt

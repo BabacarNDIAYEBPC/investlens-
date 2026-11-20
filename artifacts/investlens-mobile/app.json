@@ -17,6 +17,7 @@
       "bundleIdentifier": "app.replit.investlensmobile"
     },
     "android": {
+      "package": "app.replit.investlensmobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#f7f8fa"
