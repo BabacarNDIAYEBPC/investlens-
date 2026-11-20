@@ -82,6 +82,13 @@ Le workflow construit sur les machines Codemagic ; aucun projet natif n'est
 généré dans l'environnement de prévisualisation Replit. Il vérifie l'archive
 et sa signature JAR avant de rendre l'AAB disponible.
 
+La machine sélectionnée pour Android est **Mac mini M2**. Codemagic réserve
+le quota mensuel inclus des comptes personnels à cette machine ; une machine
+Linux peut être refusée tant que la facturation correspondante n'est pas
+activée. macOS peut aussi compiler Android : ce choix ne lance pas le
+workflow iOS. L'utilisation reste soumise aux minutes disponibles du compte.
+Voir la [tarification officielle](https://docs.codemagic.io/billing/pricing).
+
 **Limite fonctionnelle actuelle :** les achats Pro du code mobile sont
 configurés pour iOS, pas pour Google Play. Ce workflow n'ajoute pas les
 abonnements Android. L'AAB ne doit donc pas être présenté comme une version
